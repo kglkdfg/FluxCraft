@@ -1,55 +1,95 @@
 <Window x:Class="FluxCraft.App.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="FluxCraft" Height="720" Width="1120"
-        MinHeight="600" MinWidth="900"
-        WindowStartupLocation="CenterScreen"
-        Background="{StaticResource BackgroundBrush}"
-        Foreground="#F2F3F7">
+        Title="FluxCraft" Height="760" Width="1180" MinHeight="650" MinWidth="980"
+        WindowStartupLocation="CenterScreen" Background="{StaticResource BackgroundBrush}" Foreground="#F2F3F7">
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="230"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-
+        <Grid.ColumnDefinitions><ColumnDefinition Width="235"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
         <Border Grid.Column="0" Background="#1D2027" Padding="20">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top">
                     <TextBlock Text="FLUXCRAFT" FontSize="22" FontWeight="Bold" Margin="0,4,0,28"/>
-                    <Button Content="Мои сборки" Padding="12" HorizontalContentAlignment="Left" Margin="0,0,0,8"/>
-                    <Button Content="Настройки" Padding="12" HorizontalContentAlignment="Left"/>
+                    <TextBlock Text="БИБЛИОТЕКА" Foreground="#858B9A" FontSize="11" FontWeight="SemiBold" Margin="4,0,0,10"/>
+                    <Button Content="Мои сборки" HorizontalContentAlignment="Left" Margin="0,0,0,8"/>
+                    <Button Content="Настройки" HorizontalContentAlignment="Left" IsEnabled="False"/>
                 </StackPanel>
                 <TextBlock DockPanel.Dock="Bottom" Text="Minecraft Launcher • .NET 8" Foreground="#9298A7" FontSize="11"/>
             </DockPanel>
         </Border>
-
         <Grid Grid.Column="1" Margin="32">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <StackPanel>
-                <TextBlock Text="Мои сборки" FontSize="28" FontWeight="SemiBold"/>
-                <TextBlock Text="Управляй версиями Minecraft в одном месте."
-                           Foreground="#A8ADBA" Margin="0,8,0,0"/>
-            </StackPanel>
-
-            <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" CornerRadius="12"
-                    Padding="24" Margin="0,28,0,28">
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <TextBlock Text="Пока здесь пусто" FontSize="20" FontWeight="SemiBold"
-                               HorizontalAlignment="Center"/>
-                    <TextBlock Text="Создай первую сборку — здесь появятся её версия, загрузчик и настройки."
-                               Foreground="#A8ADBA" TextWrapping="Wrap" TextAlignment="Center"
-                               MaxWidth="430" Margin="0,10,0,20"/>
-                    <Button Content="Создать сборку" Padding="20,10" Background="{StaticResource AccentBrush}"
-                            Foreground="White" BorderThickness="0" FontWeight="SemiBold"/>
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Grid>
+                <StackPanel>
+                    <TextBlock Text="Мои сборки" FontSize="28" FontWeight="SemiBold"/>
+                    <TextBlock Text="Создавай и управляй отдельными установками Minecraft." Foreground="#A8ADBA" Margin="0,8,0,0"/>
                 </StackPanel>
-            </Border>
-
-            <TextBlock Grid.Row="2" Text="Готов к настройке первой сборки"
-                       Foreground="#9298A7" HorizontalAlignment="Right"/>
+                <Button Content="+ Создать сборку" Command="{Binding ToggleCreatePanelCommand}" HorizontalAlignment="Right"
+                        VerticalAlignment="Center" Background="{StaticResource AccentBrush}" Padding="18,11" FontWeight="SemiBold"/>
+            </Grid>
+            <Grid Grid.Row="1" Margin="0,26,0,24">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="1.15*"/><ColumnDefinition Width="0.85*"/></Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="18" Margin="0,0,14,0">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="{Binding Instances.Count, StringFormat='УСТАНОВКИ  •  {0}'}"
+                                   Foreground="#9298A7" FontSize="11" FontWeight="SemiBold" Margin="2,0,0,14"/>
+                        <ListBox ItemsSource="{Binding Instances}" SelectedItem="{Binding SelectedInstance}" Background="Transparent" BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="12"/><Setter Property="Margin" Value="0,0,0,8"/>
+                                    <Setter Property="Background" Value="#292D37"/><Setter Property="Foreground" Value="#F2F3F7"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <StackPanel><TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding MinecraftVersion}" Foreground="#A8ADBA" Margin="0,5,0,0"/></StackPanel>
+                                        <Border Grid.Column="1" Background="#39334F" CornerRadius="5" Padding="8,4" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Loader}" Foreground="#C8B9FF" FontSize="11"/>
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+                <Border Grid.Column="1" Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="22">
+                    <Grid>
+                        <StackPanel Visibility="{Binding CreatePanelVisibility}">
+                            <TextBlock Text="Новая сборка" FontSize="21" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="Задай имя и базовую версию Minecraft." Foreground="#A8ADBA" TextWrapping="Wrap" Margin="0,0,0,22"/>
+                            <TextBlock Text="НАЗВАНИЕ" Foreground="#9298A7" FontSize="11" Margin="0,0,0,7"/>
+                            <TextBox Text="{Binding NewInstanceName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,16"/>
+                            <TextBlock Text="ВЕРСИЯ MINECRAFT" Foreground="#9298A7" FontSize="11" Margin="0,0,0,7"/>
+                            <ComboBox SelectedValue="{Binding NewMinecraftVersion}" SelectedValuePath="Content" Margin="0,0,0,16">
+                                <ComboBoxItem Content="latest-release"/><ComboBoxItem Content="1.21.4"/><ComboBoxItem Content="1.20.4"/>
+                                <ComboBoxItem Content="1.19.4"/><ComboBoxItem Content="1.18.2"/><ComboBoxItem Content="1.16.5"/>
+                            </ComboBox>
+                            <TextBlock Text="ЗАГРУЗЧИК" Foreground="#9298A7" FontSize="11" Margin="0,0,0,7"/>
+                            <ComboBox SelectedValue="{Binding NewLoader}" SelectedValuePath="Content" Margin="0,0,0,22">
+                                <ComboBoxItem Content="Vanilla"/>
+                            </ComboBox>
+                            <Button Content="Создать" Command="{Binding CreateInstanceCommand}" Background="{StaticResource AccentBrush}" Padding="14,11" FontWeight="SemiBold"/>
+                            <Button Content="Отмена" Command="{Binding ToggleCreatePanelCommand}" Margin="0,8,0,0"/>
+                            <TextBlock Text="{Binding StatusMessage}" Foreground="#E6C77A" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding SelectedPanelVisibility}">
+                            <TextBlock Text="ВЫБРАННАЯ СБОРКА" FontSize="11" Foreground="#9298A7" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding SelectedInstance.Name}" FontSize="23" FontWeight="SemiBold" Margin="0,12,0,4"/>
+                            <TextBlock Text="{Binding SelectedInstance.MinecraftVersion, StringFormat='Minecraft {0}'}" Foreground="#A8ADBA"/>
+                            <TextBlock Text="{Binding SelectedInstance.Loader, StringFormat='Загрузчик: {0}'}" Foreground="#A8ADBA" Margin="0,5,0,0"/>
+                            <Button Content="Удалить сборку" Command="{Binding DeleteInstanceCommand}" Background="#59343B"
+                                    HorizontalAlignment="Left" Margin="0,24,0,0"/>
+                        </StackPanel>
+                        <TextBlock Text="Выбери сборку слева или создай новую." Foreground="#A8ADBA" TextWrapping="Wrap"
+                                   VerticalAlignment="Center" Visibility="{Binding EmptyStateVisibility}"/>
+                    </Grid>
+                </Border>
+            </Grid>
+            <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Foreground="#9298A7" HorizontalAlignment="Left"
+                       TextTrimming="CharacterEllipsis"/>
         </Grid>
     </Grid>
 </Window>
