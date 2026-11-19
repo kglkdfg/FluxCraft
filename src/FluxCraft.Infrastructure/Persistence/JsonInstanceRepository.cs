@@ -38,27 +38,41 @@ public sealed class JsonInstanceRepository : IInstanceRepository
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            var directory = Path.GetDirectoryName(_filePath)!;
-            Directory.CreateDirectory(directory);
-
-            List<GameInstance> instances;
-            if (File.Exists(_filePath))
-            {
-                await using var read = File.OpenRead(_filePath);
-                instances = await JsonSerializer.DeserializeAsync<List<GameInstance>>(read, JsonOptions, cancellationToken) ?? [];
-            }
-            else instances = [];
-
+            var instances = await ReadUnsafeAsync(cancellationToken);
             var index = instances.FindIndex(x => x.Id == instance.Id);
             if (index >= 0) instances[index] = instance;
             else instances.Add(instance);
-
-            var temporaryPath = _filePath + ".tmp";
-            await using (var write = File.Create(temporaryPath))
-                await JsonSerializer.SerializeAsync(write, instances, JsonOptions, cancellationToken);
-
-            File.Move(temporaryPath, _filePath, true);
+            await WriteUnsafeAsync(instances, cancellationToken);
         }
         finally { _gate.Release(); }
+    }
+
+    public async Task DeleteAsync(Guid instanceId, CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var instances = await ReadUnsafeAsync(cancellationToken);
+            instances.RemoveAll(x => x.Id == instanceId);
+            await WriteUnsafeAsync(instances, cancellationToken);
+        }
+        finally { _gate.Release(); }
+    }
+
+    private async Task<List<GameInstance>> ReadUnsafeAsync(CancellationToken cancellationToken)
+    {
+        if (!File.Exists(_filePath)) return [];
+        await using var stream = File.OpenRead(_filePath);
+        return await JsonSerializer.DeserializeAsync<List<GameInstance>>(stream, JsonOptions, cancellationToken) ?? [];
+    }
+
+    private async Task WriteUnsafeAsync(List<GameInstance> instances, CancellationToken cancellationToken)
+    {
+        var directory = Path.GetDirectoryName(_filePath)!;
+        Directory.CreateDirectory(directory);
+        var temporaryPath = _filePath + ".tmp";
+        await using (var write = File.Create(temporaryPath))
+            await JsonSerializer.SerializeAsync(write, instances, JsonOptions, cancellationToken);
+        File.Move(temporaryPath, _filePath, true);
     }
 }
