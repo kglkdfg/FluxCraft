@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text.Json;
 using FluxCraft.Application.Abstractions;
@@ -8,6 +9,7 @@ public sealed class JavaRuntimeInstaller : IJavaRuntimeInstaller
 {
     private const string VersionManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
     private const string RuntimeIndexUrl = "https://piston-meta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json";
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> InstallLocks = new(StringComparer.OrdinalIgnoreCase);
     private readonly HttpClient _httpClient;
     private readonly string _runtimeRoot;
 
@@ -22,6 +24,24 @@ public sealed class JavaRuntimeInstaller : IJavaRuntimeInstaller
         string minecraftVersion,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)
+    {
+        var lockKey = Path.GetFullPath(_runtimeRoot);
+        var installLock = InstallLocks.GetOrAdd(lockKey, static _ => new SemaphoreSlim(1, 1));
+        await installLock.WaitAsync(cancellationToken);
+        try
+        {
+            return await EnsureInstalledCoreAsync(minecraftVersion, progress, cancellationToken);
+        }
+        finally
+        {
+            installLock.Release();
+        }
+    }
+
+    private async Task<JavaRuntimeInstallation> EnsureInstalledCoreAsync(
+        string minecraftVersion,
+        IProgress<double>? progress,
+        CancellationToken cancellationToken)
     {
         if (!OperatingSystem.IsWindows() || !Environment.Is64BitOperatingSystem)
             throw new PlatformNotSupportedException("Автоматическая установка Java пока поддерживает только Windows x64.");
@@ -198,7 +218,7 @@ public sealed class JavaRuntimeInstaller : IJavaRuntimeInstaller
             // Windows may briefly lock files while Java, Defender or the indexer inspects them.
             // Retry atomic publication; never delete the existing runtime file before the new one is verified.
             IOException? lastLockError = null;
-            for (var attempt = 0; attempt < 5; attempt++)
+            for (var attempt = 0; attempt < 11; attempt++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 try
@@ -217,14 +237,14 @@ public sealed class JavaRuntimeInstaller : IJavaRuntimeInstaller
                     }
 
                     lastLockError = exception;
-                    if (attempt < 4)
-                        await Task.Delay(TimeSpan.FromMilliseconds(300 * (attempt + 1)), cancellationToken);
+                    if (attempt < 10)
+                        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                 }
             }
 
             if (lastLockError is not null)
                 throw new IOException(
-                    $"Не удалось обновить файл Java «{Path.GetFileName(destination)}»: файл занят другим процессом. " +
+                    $"Не удалось обновить файл Java «{destination}»: файл занят другим процессом. " +
                     "Закройте другие запущенные экземпляры FluxCraft/Minecraft и повторите установку.",
                     lastLockError);
         }
