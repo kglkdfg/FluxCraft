@@ -80,6 +80,15 @@
                             <TextBlock Text="{Binding SelectedInstance.Name}" FontSize="23" FontWeight="SemiBold" Margin="0,12,0,4"/>
                             <TextBlock Text="{Binding SelectedInstance.MinecraftVersion, StringFormat='Minecraft {0}'}" Foreground="#A8ADBA"/>
                             <TextBlock Text="{Binding SelectedInstance.Loader, StringFormat='Загрузчик: {0}'}" Foreground="#A8ADBA" Margin="0,5,0,0"/>
+                            <TextBlock Text="{Binding SelectedInstance.JavaExecutablePath, StringFormat='Java: {0}'}"
+                                       Foreground="#9298A7" FontSize="10" TextWrapping="Wrap" Margin="0,14,0,0"/>
+                            <Button Content="Установить Java автоматически" Command="{Binding InstallJavaCommand}"
+                                    IsEnabled="{Binding InstallJavaCommand.CanExecute}" Background="{StaticResource AccentBrush}"
+                                    HorizontalAlignment="Stretch" Margin="0,18,0,0" Padding="12,10"/>
+                            <ProgressBar Minimum="0" Maximum="100" Value="{Binding JavaInstallProgress}" Height="5"
+                                         Margin="0,10,0,0" Background="#393D48" Foreground="{StaticResource AccentBrush}"/>
+                            <TextBlock Text="{Binding StatusMessage}" Foreground="#A8ADBA" FontSize="11"
+                                       TextWrapping="Wrap" Margin="0,8,0,0"/>
                             <Button Content="Удалить сборку" Command="{Binding DeleteInstanceCommand}" Background="#59343B"
                                     HorizontalAlignment="Left" Margin="0,24,0,0"/>
                         </StackPanel>
