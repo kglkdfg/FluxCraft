@@ -1,4 +1,5 @@
 using FluxCraft.Domain.Instances;
+using Xunit;
 
 namespace FluxCraft.Tests.Domain;
 
