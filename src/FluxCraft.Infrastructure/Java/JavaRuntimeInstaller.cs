@@ -177,13 +177,14 @@ public sealed class JavaRuntimeInstaller : IJavaRuntimeInstaller
         string url, string destination, string expectedSha1, long expectedSize, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-        var temporary = destination + ".part";
+        // A unique temporary name prevents two FluxCraft processes from sharing the same .part file.
+        var temporary = destination + "." + Guid.NewGuid().ToString("N") + ".part";
         try
         {
             using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
             await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken))
-            await using (var output = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+            await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true))
                 await source.CopyToAsync(output, cancellationToken);
 
             var info = new FileInfo(temporary);
@@ -193,11 +194,48 @@ public sealed class JavaRuntimeInstaller : IJavaRuntimeInstaller
             var hash = await SHA1.HashDataAsync(verify, cancellationToken);
             if (!Convert.ToHexString(hash).Equals(expectedSha1, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException($"SHA-1 Java-файла {Path.GetFileName(destination)} не совпадает с манифестом.");
-            File.Move(temporary, destination, true);
+
+            // Windows may briefly lock files while Java, Defender or the indexer inspects them.
+            // Retry atomic publication; never delete the existing runtime file before the new one is verified.
+            IOException? lastLockError = null;
+            for (var attempt = 0; attempt < 5; attempt++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    File.Move(temporary, destination, true);
+                    lastLockError = null;
+                    break;
+                }
+                catch (IOException exception)
+                {
+                    // Another installer may have completed this exact file while we were downloading.
+                    if (await IsValidFileAsync(destination, expectedSha1, expectedSize, cancellationToken))
+                    {
+                        lastLockError = null;
+                        break;
+                    }
+
+                    lastLockError = exception;
+                    if (attempt < 4)
+                        await Task.Delay(TimeSpan.FromMilliseconds(300 * (attempt + 1)), cancellationToken);
+                }
+            }
+
+            if (lastLockError is not null)
+                throw new IOException(
+                    $"Не удалось обновить файл Java «{Path.GetFileName(destination)}»: файл занят другим процессом. " +
+                    "Закройте другие запущенные экземпляры FluxCraft/Minecraft и повторите установку.",
+                    lastLockError);
         }
         finally
         {
-            if (File.Exists(temporary)) File.Delete(temporary);
+            if (File.Exists(temporary))
+            {
+                try { File.Delete(temporary); }
+                catch (IOException) { /* A pending temporary file is harmless; the next install uses a unique name. */ }
+                catch (UnauthorizedAccessException) { /* Do not hide the original installation error. */ }
+            }
         }
     }
 }
