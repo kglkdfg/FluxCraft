@@ -52,13 +52,21 @@ public sealed class JavaRuntimeInstaller : IJavaRuntimeInstaller
         var versionUrl = versionEntry.GetProperty("url").GetString()
                          ?? throw new InvalidDataException("В манифесте версии отсутствует URL.");
         var versionJson = await GetJsonAsync(versionUrl, cancellationToken);
-        if (!versionJson.RootElement.TryGetProperty("javaVersion", out var javaVersion) ||
-            !javaVersion.TryGetProperty("component", out var componentElement))
-            throw new InvalidDataException($"Minecraft {resolvedVersion} не содержит требования javaVersion.");
-
-        var component = componentElement.GetString()
+        string component;
+        int majorVersion;
+        if (versionJson.RootElement.TryGetProperty("javaVersion", out var javaVersion) &&
+            javaVersion.TryGetProperty("component", out var componentElement))
+        {
+            component = componentElement.GetString()
                         ?? throw new InvalidDataException("Не удалось определить компонент Java.");
-        var majorVersion = javaVersion.GetProperty("majorVersion").GetInt32();
+            majorVersion = javaVersion.GetProperty("majorVersion").GetInt32();
+        }
+        else
+        {
+            // Legacy Vanilla versions before javaVersion was added use Mojang's Java 8 runtime.
+            component = "jre-legacy";
+            majorVersion = 8;
+        }
         progress?.Report(5);
 
         var runtimeIndex = await GetJsonAsync(RuntimeIndexUrl, cancellationToken);
