@@ -4,12 +4,14 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FluxCraft.Application.Abstractions;
 using FluxCraft.Domain.Instances;
+using FluxCraft.Application.Abstractions;
 
 namespace FluxCraft.App.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
     private readonly IInstanceRepository _repository;
+    private readonly IJavaRuntimeInstaller _javaRuntimeInstaller;
     public ObservableCollection<GameInstance> Instances { get; } = [];
 
     [ObservableProperty] private GameInstance? selectedInstance;
@@ -18,12 +20,18 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string newLoader = "Vanilla";
     [ObservableProperty] private bool isCreatePanelVisible;
     [ObservableProperty] private string statusMessage = "Готово к работе";
+    [ObservableProperty] private bool isBusy;
+    [ObservableProperty] private double javaInstallProgress;
 
     public Visibility CreatePanelVisibility => IsCreatePanelVisible ? Visibility.Visible : Visibility.Collapsed;
     public Visibility SelectedPanelVisibility => SelectedInstance is not null && !IsCreatePanelVisible ? Visibility.Visible : Visibility.Collapsed;
     public Visibility EmptyStateVisibility => Instances.Count == 0 && !IsCreatePanelVisible ? Visibility.Visible : Visibility.Collapsed;
 
-    public MainViewModel(IInstanceRepository repository) => _repository = repository;
+    public MainViewModel(IInstanceRepository repository, IJavaRuntimeInstaller javaRuntimeInstaller)
+    {
+        _repository = repository;
+        _javaRuntimeInstaller = javaRuntimeInstaller;
+    }
 
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
