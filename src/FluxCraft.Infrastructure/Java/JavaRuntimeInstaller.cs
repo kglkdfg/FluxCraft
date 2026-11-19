@@ -23,7 +23,7 @@ public sealed class JavaRuntimeInstaller : IJavaRuntimeInstaller
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        if (!OperatingSystem.IsWindows() || !Environment.Is64BitOperatingSystem())
+        if (!OperatingSystem.IsWindows() || !Environment.Is64BitOperatingSystem)
             throw new PlatformNotSupportedException("Автоматическая установка Java пока поддерживает только Windows x64.");
 
         progress?.Report(0);
