@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FluxCraft.Application.Abstractions;
 using FluxCraft.Domain.Instances;
-using FluxCraft.Application.Abstractions;
 
 namespace FluxCraft.App.ViewModels;
 
@@ -12,6 +11,7 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly IInstanceRepository _repository;
     private readonly IJavaRuntimeInstaller _javaRuntimeInstaller;
+
     public ObservableCollection<GameInstance> Instances { get; } = [];
 
     [ObservableProperty] private GameInstance? selectedInstance;
@@ -40,14 +40,27 @@ public partial class MainViewModel : ObservableObject
     {
         var loaded = await _repository.GetAllAsync(cancellationToken);
         Instances.Clear();
-        foreach (var instance in loaded.OrderBy(x => x.Name)) Instances.Add(instance);
+        foreach (var instance in loaded.OrderBy(x => x.Name))
+            Instances.Add(instance);
         SelectedInstance = Instances.FirstOrDefault();
         RefreshVisibility();
         StatusMessage = $"Загружено сборок: {Instances.Count}";
     }
 
-    partial void OnSelectedInstanceChanged(GameInstance? value)\n    {\n        RefreshVisibility();\n        OnPropertyChanged(nameof(IsJavaInstallEnabled));\n        InstallJavaCommand.NotifyCanExecuteChanged();\n    }
-    partial void OnIsCreatePanelVisibleChanged(bool value) => RefreshVisibility();\n\n    partial void OnIsBusyChanged(bool value)\n    {\n        OnPropertyChanged(nameof(IsJavaInstallEnabled));\n        InstallJavaCommand.NotifyCanExecuteChanged();\n    }
+    partial void OnSelectedInstanceChanged(GameInstance? value)
+    {
+        RefreshVisibility();
+        OnPropertyChanged(nameof(IsJavaInstallEnabled));
+        InstallJavaCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnIsCreatePanelVisibleChanged(bool value) => RefreshVisibility();
+
+    partial void OnIsBusyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsJavaInstallEnabled));
+        InstallJavaCommand.NotifyCanExecuteChanged();
+    }
 
     private void RefreshVisibility()
     {
@@ -91,8 +104,49 @@ public partial class MainViewModel : ObservableObject
             IsCreatePanelVisible = false;
             StatusMessage = $"Сборка «{instance.Name}» создана";
         }
-        catch (Exception exception) { StatusMessage = $"Не удалось сохранить сборку: {exception.Message}"; }
+        catch (Exception exception)
+        {
+            StatusMessage = $"Не удалось сохранить сборку: {exception.Message}";
+        }
     }
+
+    [RelayCommand(CanExecute = nameof(CanInstallJava))]
+    private async Task InstallJavaAsync(CancellationToken cancellationToken)
+    {
+        if (SelectedInstance is null || !string.Equals(SelectedInstance.Loader, "Vanilla", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        IsBusy = true;
+        JavaInstallProgress = 0;
+        StatusMessage = $"Определяем требуемую Java для Minecraft {SelectedInstance.MinecraftVersion}…";
+        try
+        {
+            var progress = new Progress<double>(value =>
+            {
+                JavaInstallProgress = value;
+                StatusMessage = $"Установка Java: {value:0}%";
+            });
+            var installation = await _javaRuntimeInstaller.EnsureInstalledAsync(
+                SelectedInstance.MinecraftVersion, progress, cancellationToken);
+            SelectedInstance.JavaExecutablePath = installation.ExecutablePath;
+            await _repository.SaveAsync(SelectedInstance, cancellationToken);
+            StatusMessage = $"Java {installation.MajorVersion} готова для Minecraft {SelectedInstance.MinecraftVersion}";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Установка Java отменена";
+        }
+        catch (Exception exception)
+        {
+            StatusMessage = $"Ошибка установки Java: {exception.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private bool CanInstallJava() => IsJavaInstallEnabled;
 
     [RelayCommand]
     private async Task DeleteInstanceAsync()
@@ -106,6 +160,9 @@ public partial class MainViewModel : ObservableObject
             SelectedInstance = Instances.FirstOrDefault();
             StatusMessage = $"Сборка «{instance.Name}» удалена";
         }
-        catch (Exception exception) { StatusMessage = $"Не удалось удалить сборку: {exception.Message}"; }
+        catch (Exception exception)
+        {
+            StatusMessage = $"Не удалось удалить сборку: {exception.Message}";
+        }
     }
 }
