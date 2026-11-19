@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using FluxCraft.Application.Abstractions;
 
 namespace FluxCraft.Infrastructure.Java;
@@ -166,16 +165,14 @@ public sealed class JavaRuntimeInstaller : IJavaRuntimeInstaller
         return Convert.ToHexString(hash).Equals(sha1, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static async Task DownloadVerifiedFileAsync(
+    private async Task DownloadVerifiedFileAsync(
         string url, string destination, string expectedSha1, long expectedSize, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
         var temporary = destination + ".part";
         try
         {
-            using var response = await new HttpRequestMessage(HttpMethod.Get, url).SendAsync(
-                new HttpClientHandler() is var handler ? new HttpClient(handler, disposeHandler: true) : throw new InvalidOperationException(),
-                HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
             await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken))
             await using (var output = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
