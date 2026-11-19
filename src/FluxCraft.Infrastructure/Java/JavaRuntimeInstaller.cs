@@ -111,11 +111,36 @@ public sealed class JavaRuntimeInstaller : IJavaRuntimeInstaller
                          ?? throw new InvalidDataException("В runtime-индексе отсутствует URL пакета.");
         var packageJson = await GetJsonAsync(packageUrl, cancellationToken);
         var runtimeVersion = selected.GetProperty("version").GetProperty("name").GetString() ?? majorVersion.ToString();
-        var installDirectory = Path.Combine(_runtimeRoot, component, "windows-x64", runtimeVersion);
         var files = packageJson.RootElement.GetProperty("files");
         var fileEntries = files.EnumerateObject()
             .Where(x => x.Value.GetProperty("type").GetString() == "file")
             .ToArray();
+
+        // Never overwrite files in a previously published runtime directory. A file such as
+        // COPYRIGHT may be held open by Windows Defender, an indexer, or another process.
+        // Reuse the active directory only when every file still matches Mojang's manifest;
+        // otherwise install into a fresh directory and publish it only after full validation.
+        var runtimeParent = Path.Combine(_runtimeRoot, component, "windows-x64", runtimeVersion);
+        Directory.CreateDirectory(runtimeParent);
+        var activeMarker = Path.Combine(runtimeParent, ".fluxcraft-active");
+        string? activeDirectoryName = null;
+        if (File.Exists(activeMarker))
+        {
+            try { activeDirectoryName = (await File.ReadAllTextAsync(activeMarker, cancellationToken)).Trim(); }
+            catch (IOException) { /* A missing/unreadable marker simply triggers a fresh installation. */ }
+        }
+
+        var installDirectory = !string.IsNullOrWhiteSpace(activeDirectoryName)
+            ? GetSafePath(runtimeParent, activeDirectoryName)
+            : string.Empty;
+
+        if (string.IsNullOrWhiteSpace(installDirectory) ||
+            !await IsRuntimeCompleteAsync(installDirectory, fileEntries, cancellationToken))
+        {
+            installDirectory = Path.Combine(runtimeParent, "runtime-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(installDirectory);
+        }
+
         var completed = 0;
 
         foreach (var entry in files.EnumerateObject())
@@ -164,8 +189,48 @@ public sealed class JavaRuntimeInstaller : IJavaRuntimeInstaller
         if (!File.Exists(executable))
             throw new InvalidDataException("Java скачана, но исполняемый файл bin/javaw.exe не найден.");
 
+        // Publish the new runtime only after every file has been downloaded and verified.
+        var markerTemporary = activeMarker + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            await File.WriteAllTextAsync(markerTemporary, Path.GetFileName(installDirectory), cancellationToken);
+            File.Move(markerTemporary, activeMarker, true);
+        }
+        finally
+        {
+            if (File.Exists(markerTemporary))
+            {
+                try { File.Delete(markerTemporary); }
+                catch (IOException) { }
+            }
+        }
+
         progress?.Report(100);
         return new JavaRuntimeInstallation(component, majorVersion, executable);
+    }
+
+    private static async Task<bool> IsRuntimeCompleteAsync(
+        string directory,
+        IEnumerable<JsonProperty> fileEntries,
+        CancellationToken cancellationToken)
+    {
+        if (!Directory.Exists(directory))
+            return false;
+
+        foreach (var entry in fileEntries)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var relativePath = entry.Name.Replace('/', Path.DirectorySeparatorChar);
+            var filePath = GetSafePath(directory, relativePath);
+            var raw = entry.Value.GetProperty("downloads").GetProperty("raw");
+            var hash = raw.GetProperty("sha1").GetString();
+            var size = raw.GetProperty("size").GetInt64();
+            if (string.IsNullOrWhiteSpace(hash) ||
+                !await IsValidFileAsync(filePath, hash, size, cancellationToken))
+                return false;
+        }
+
+        return true;
     }
 
     private async Task<JsonDocument> GetJsonAsync(string url, CancellationToken cancellationToken)
