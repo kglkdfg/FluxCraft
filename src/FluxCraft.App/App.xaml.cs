@@ -3,6 +3,7 @@ using FluxCraft.App.ViewModels;
 using FluxCraft.App.Views;
 using FluxCraft.Application.Abstractions;
 using FluxCraft.Infrastructure.Persistence;
+using FluxCraft.Infrastructure.Java;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluxCraft.App;
@@ -16,6 +17,8 @@ public partial class App : System.Windows.Application
         base.OnStartup(e);
         var registrations = new ServiceCollection();
         registrations.AddSingleton<IInstanceRepository>(_ => new JsonInstanceRepository());
+        registrations.AddSingleton(new HttpClient());
+        registrations.AddSingleton<IJavaRuntimeInstaller, JavaRuntimeInstaller>();
         registrations.AddSingleton<MainViewModel>();
         registrations.AddSingleton<MainWindow>();
         _services = registrations.BuildServiceProvider();
