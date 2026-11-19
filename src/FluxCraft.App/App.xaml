@@ -1,7 +1,6 @@
 <Application x:Class="FluxCraft.App.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             StartupUri="Views/MainWindow.xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
         <Color x:Key="BackgroundColor">#17191F</Color>
         <Color x:Key="SurfaceColor">#22252D</Color>
@@ -9,5 +8,24 @@
         <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}" />
         <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
         <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+        <Style TargetType="Button">
+            <Setter Property="Foreground" Value="#F2F3F7"/>
+            <Setter Property="Background" Value="#303440"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#17191F"/>
+            <Setter Property="Foreground" Value="#F2F3F7"/>
+            <Setter Property="BorderBrush" Value="#414653"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="CaretBrush" Value="White"/>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#17191F"/>
+            <Setter Property="Foreground" Value="#F2F3F7"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
     </Application.Resources>
 </Application>
