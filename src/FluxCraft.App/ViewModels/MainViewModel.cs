@@ -43,7 +43,7 @@ public partial class MainViewModel : ObservableObject
         StatusMessage = $"Загружено сборок: {Instances.Count}";
     }
 
-    partial void OnSelectedInstanceChanged(GameInstance? value) => RefreshVisibility();
+    partial void OnSelectedInstanceChanged(GameInstance? value)\n    {\n        RefreshVisibility();\n        InstallJavaCommand.NotifyCanExecuteChanged();\n    }
     partial void OnIsCreatePanelVisibleChanged(bool value) => RefreshVisibility();
 
     private void RefreshVisibility()
