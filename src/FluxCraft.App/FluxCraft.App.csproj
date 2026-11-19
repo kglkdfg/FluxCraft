@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FluxCraft.Domain\FluxCraft.Domain.csproj" />
+    <ProjectReference Include="..\FluxCraft.Application\FluxCraft.Application.csproj" />
+    <ProjectReference Include="..\FluxCraft.Infrastructure\FluxCraft.Infrastructure.csproj" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+  </ItemGroup>
+</Project>
