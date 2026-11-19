@@ -23,6 +23,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool isBusy;
     [ObservableProperty] private double javaInstallProgress;
 
+    public bool IsJavaInstallEnabled => !IsBusy && SelectedInstance is not null &&
+        string.Equals(SelectedInstance.Loader, "Vanilla", StringComparison.OrdinalIgnoreCase);
+
     public Visibility CreatePanelVisibility => IsCreatePanelVisible ? Visibility.Visible : Visibility.Collapsed;
     public Visibility SelectedPanelVisibility => SelectedInstance is not null && !IsCreatePanelVisible ? Visibility.Visible : Visibility.Collapsed;
     public Visibility EmptyStateVisibility => Instances.Count == 0 && !IsCreatePanelVisible ? Visibility.Visible : Visibility.Collapsed;
@@ -43,8 +46,8 @@ public partial class MainViewModel : ObservableObject
         StatusMessage = $"Загружено сборок: {Instances.Count}";
     }
 
-    partial void OnSelectedInstanceChanged(GameInstance? value)\n    {\n        RefreshVisibility();\n        InstallJavaCommand.NotifyCanExecuteChanged();\n    }
-    partial void OnIsCreatePanelVisibleChanged(bool value) => RefreshVisibility();
+    partial void OnSelectedInstanceChanged(GameInstance? value)\n    {\n        RefreshVisibility();\n        OnPropertyChanged(nameof(IsJavaInstallEnabled));\n        InstallJavaCommand.NotifyCanExecuteChanged();\n    }
+    partial void OnIsCreatePanelVisibleChanged(bool value) => RefreshVisibility();\n\n    partial void OnIsBusyChanged(bool value)\n    {\n        OnPropertyChanged(nameof(IsJavaInstallEnabled));\n        InstallJavaCommand.NotifyCanExecuteChanged();\n    }
 
     private void RefreshVisibility()
     {
